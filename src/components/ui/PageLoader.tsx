@@ -1,68 +1,72 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 
 export function PageLoader() {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
   const [isFading, setIsFading] = useState(false);
   const location = useLocation();
-  useEffect(() => {
+  const fadingRef = useRef(false);
 
+  useEffect(() => {
     setIsVisible(true);
     setIsFading(false);
+    fadingRef.current = false;
     let cancelled = false;
 
     const startFade = () => {
-      if (cancelled) return;
-      // Extra 1s delay after all images loaded
+      if (cancelled || fadingRef.current) return;
+      fadingRef.current = true;
       setTimeout(() => {
         if (cancelled) return;
         setIsFading(true);
         setTimeout(() => {
           if (!cancelled) setIsVisible(false);
         }, 500);
-      }, 1000);
+      }, 300);
     };
 
-    const waitForImages = () => {
-      const images = Array.from(document.images);
-      const unloaded = images.filter((img) => !img.complete || img.naturalHeight === 0);
+    // Continuously poll: only fade when ALL current images are complete
+    // and the DOM has stabilized (no new images appearing)
+    let lastImageCount = 0;
+    let stableChecks = 0;
 
-      if (unloaded.length === 0 && images.length > 0) {
-        startFade();
+    const poll = setInterval(() => {
+      if (cancelled || fadingRef.current) return;
+
+      const images = Array.from(document.images);
+      const total = images.length;
+
+      if (total === 0) {
+        // No images yet, keep waiting (up to fallback)
         return;
       }
 
-      if (images.length === 0) {
-        return; // No images yet, keep polling
+      const allComplete = images.every(
+        (img) => img.complete && img.naturalHeight > 0
+      );
+
+      if (allComplete) {
+        // Check if image count is stable (no new images being added)
+        if (total === lastImageCount) {
+          stableChecks++;
+        } else {
+          stableChecks = 0;
+          lastImageCount = total;
+        }
+
+        // Wait for 3 consecutive stable checks (~450ms of stability)
+        if (stableChecks >= 3) {
+          clearInterval(poll);
+          startFade();
+        }
+      } else {
+        // Reset stability counter if not all loaded
+        stableChecks = 0;
+        lastImageCount = total;
       }
+    }, 150);
 
-      let loaded = 0;
-      const total = unloaded.length;
-
-      unloaded.forEach((img) => {
-        const onDone = () => {
-          loaded++;
-          if (loaded >= total) startFade();
-        };
-        img.addEventListener('load', onDone, { once: true });
-        img.addEventListener('error', onDone, { once: true });
-      });
-    };
-
-    // Poll until images appear, then wait for them
-    let attempts = 0;
-    const poll = setInterval(() => {
-      attempts++;
-      const images = Array.from(document.images);
-      if (images.length > 0) {
-        clearInterval(poll);
-        waitForImages();
-      } else if (attempts > 50) {
-        clearInterval(poll);
-        startFade();
-      }
-    }, 100);
-
+    // Hard fallback: 15 seconds max
     const fallback = setTimeout(() => {
       clearInterval(poll);
       startFade();
