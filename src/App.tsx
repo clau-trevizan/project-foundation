@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-
+import { PageLoader } from "@/components/ui/PageLoader";
 
 import { SmoothScroll } from "@/components/ui/SmoothScroll";
 import Index from "./pages/Index";
@@ -27,19 +27,17 @@ const PoliticaPrivacidade = lazy(() => import("./pages/PoliticaPrivacidade"));
 
 const queryClient = new QueryClient();
 
-
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      
       <SmoothScroll />
       <Toaster />
       <Sonner />
       <BrowserRouter>
         <LanguageProvider>
           <ScrollToTop />
-          <Suspense fallback={<div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ backgroundColor: '#16493C' }}><div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent" /></div>}>
+          <PageLoader />
+          <Suspense fallback={null}>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/solucoes" element={<Solucoes />} />
