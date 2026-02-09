@@ -5,11 +5,7 @@ export function PageLoader() {
   const [isVisible, setIsVisible] = useState(false);
   const [isFading, setIsFading] = useState(false);
   const location = useLocation();
-  const isHome = location.pathname === '/';
-
-  // Don't show on home page (InitialLoader handles it)
   useEffect(() => {
-    if (isHome) return;
 
     setIsVisible(true);
     setIsFading(false);
@@ -79,7 +75,7 @@ export function PageLoader() {
     };
   }, [location.pathname]);
 
-  if (!isVisible || isHome) return null;
+  if (!isVisible) return null;
 
   return (
     <div
